@@ -17,13 +17,27 @@ if uploaded_file is not None:
     st.subheader("Preview of Dataset")
     st.write(df.head())
 
+    st.write("Data Types:")
+    st.write(df.dtypes)
+
     target_column = st.selectbox("Select the target column (Sales)", df.columns)
-    
+
     feature_columns = st.multiselect("Select feature columns", [col for col in df.columns if col != target_column])
 
     if feature_columns:
-        X = df[feature_columns]
-        y = df[target_column]
+        # Drop rows with missing values in selected columns
+        df = df.dropna(subset=feature_columns + [target_column])
+
+        # Convert categorical features to dummy/indicator variables
+        X = pd.get_dummies(df[feature_columns])
+
+        # Ensure the target is numeric
+        y = pd.to_numeric(df[target_column], errors='coerce')
+
+        # Remove rows where target couldn't be converted to numeric
+        valid_idx = y.notna()
+        X = X[valid_idx]
+        y = y[valid_idx]
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -47,14 +61,14 @@ if uploaded_file is not None:
 
         st.subheader("Feature Importance")
         importances = model.feature_importances_
-        importance_df = pd.DataFrame({'Feature': feature_columns, 'Importance': importances})
+        importance_df = pd.DataFrame({'Feature': X.columns, 'Importance': importances})
         importance_df = importance_df.sort_values(by='Importance', ascending=False)
         st.bar_chart(importance_df.set_index('Feature'))
 
         st.subheader("Make a Prediction")
         input_data = {}
-        for feature in feature_columns:
-            input_data[feature] = st.number_input(f"Input {feature}", value=float(df[feature].mean()))
+        for feature in X.columns:
+            input_data[feature] = st.number_input(f"Input {feature}", value=0.0)
 
         if st.button("Predict Sales"):
             input_df = pd.DataFrame([input_data])
