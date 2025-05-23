@@ -28,16 +28,18 @@ if uploaded_file is not None:
         # Drop rows with missing values in selected columns
         df = df.dropna(subset=feature_columns + [target_column])
 
-        # Convert categorical features to dummy/indicator variables
-        X = pd.get_dummies(df[feature_columns])
-
         # Ensure the target is numeric
-        y = pd.to_numeric(df[target_column], errors='coerce')
+        df[target_column] = pd.to_numeric(df[target_column], errors='coerce')
 
-        # Remove rows where target couldn't be converted to numeric
-        valid_idx = y.notna()
-        X = X[valid_idx]
-        y = y[valid_idx]
+        # Drop rows where the target couldn't be converted
+        df = df.dropna(subset=[target_column])
+
+        # Convert features to dummy variables
+        X = pd.get_dummies(df[feature_columns])
+        y = df[target_column]
+
+        # Align features and target
+        X, y = X.align(y, join='inner', axis=0)
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
